@@ -1,0 +1,7 @@
+flask
+flask-cors
+easyocr
+numpy
+torch
+python-levenshtein
+Pillow

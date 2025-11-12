@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntelliGallery (EasyOCR) - Type It. Find It.</title>
+    
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; 
+        }
+        h1, h2, h3 {
+            font-family: 'Montserrat', sans-serif;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+
+        .highlight-box {
+            position: absolute;
+            background-color: rgba(250, 204, 21, 0.3); 
+            border: 2px solid #facc15; 
+            border-radius: 2px;
+            box-sizing: border-box;
+        }
+
+        .thumbnail-error {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 8px;
+            text-align: center;
+        }
+        .thumbnail-error svg {
+            width: 30%;
+            height: 30%;
+            margin-bottom: 8px;
+        }
+        .thumbnail-error-text {
+            font-size: 0.75rem;
+            line-height: 1rem;
+            color: #94a3b8; 
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #duplicate-modal-content {
+             animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="text-gray-200 antialiased">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+
+        <header class="text-center mb-8">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="w-24 h-24 mx-auto mb-4">
+                <g>
+                    <circle cx="55" cy="45" r="25" fill="none" stroke="#60a5fa" stroke-width="6"/>
+                    <line x1="74" y1="64" x2="90" y2="80" stroke="#60a5fa" stroke-width="7" stroke-linecap="round"/>
+                    
+                    <path d="M10 80 L 35 50 L 50 65 L 70 40 L 90 80 Z" fill="#64748b" fill-opacity="0.5" />
+                    
+                    <circle cx="70" cy="30" r="8" fill="#fbbf24"/>
+
+                    <g transform="translate(38, 38) scale(0.35)">
+                        <rect x="5" y="5" width="40" height="5" rx="1" fill="#64748b" opacity="0.6"/>
+                        <rect x="5" y="18" width="50" height="5" rx="1" fill="#64748b" opacity="0.6"/>
+                        <rect x="5" y="31" width="30" height="5" rx="1" fill="#64748b" opacity="0.6"/>
+                    </g>
+                </g>
+            </svg>
+            <h1 class="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+                IntelliGallery
+            </h1>
+            <p class="text-xl text-gray-400 mt-2">Stop Scrolling. Start Finding.</p>
+        </header>
+
+
+        <div class="sticky top-0 bg-slate-900 bg-opacity-80 backdrop-blur-md z-10 py-4 mb-8">
+            <div class="flex flex-col md:flex-row gap-4 items-center">
+                <label for="image-input" class="w-full md:w-auto cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-center shadow-lg">
+                    Add Images
+                </label>
+                <input type="file" id="image-input" multiple accept="image/*" class="hidden">
+
+                <div class="relative w-full">
+                    <input type="search" id="search-bar" placeholder="Search text... (e.g., 'invoice OR receipt' or 'report AND 2025')" class="w-full bg-slate-800 border-2 border-slate-700 focus:border-blue-500 focus:ring-0 text-white rounded-lg py-3 pl-12 pr-4 transition shadow-inner">
+                    <svg class="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="status-section" class="text-center my-6 h-16">
+             <p id="status-text" class="text-slate-400">Initializing... Please wait for backend server.</p>
+             <div class="w-full bg-slate-700 rounded-full h-2.5 mt-2 hidden" id="progress-bar-container">
+                 <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div id="results-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        </div>
+
+    </div>
+
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden items-center justify-center p-4">
+        <div id="modal-content" class="relative bg-slate-800 rounded-lg max-w-5xl w-full max-h-[90vh] overflow-auto shadow-2xl">
+            <div class="flex justify-between items-center p-4 border-b border-slate-700">
+                <h3 id="modal-title" class="text-xl font-semibold text-white truncate w-11/12">Image Viewer</h3>
+                <div class="flex gap-4">
+
+                    <button id="modal-delete-btn" class="text-slate-400 hover:text-red-500 transition-colors" title="Delete Image">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+
+                    <button id="modal-close" class="text-slate-400 hover:text-white text-3xl">&times;</button>
+                </div>
+            </div>
+            
+            <div class="p-4">
+                <div id="image-container" class="relative w-full h-full flex justify-center items-center bg-black/20 min-h-[50vh]">
+                    <div id="modal-error-message" class="text-slate-400 text-center hidden">
+                        <svg class="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <h4 class="mt-4 text-lg font-bold">File Not Found</h4>
+                        <p>The original image file may have been moved or deleted.</p>
+                        <p class="mt-2">You can use the delete button above to remove this record.</p>
+                    </div>
+
+                    <img id="modal-image" src="" class="max-w-full max-h-[75vh] object-contain mx-auto">
+
+                    <div id="highlight-container" class="absolute top-0 left-0 w-full h-full"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+
+    <div id="duplicate-modal" class="fixed inset-0 bg-black bg-opacity-80 z-[60] hidden items-center justify-center p-4">
+        <div id="duplicate-modal-content" class="relative bg-slate-800 rounded-lg shadow-2xl w-full max-w-md p-6">
+             <h3 id="duplicate-title" class="text-xl font-semibold text-white mb-4">Duplicate File Detected</h3>
+             <p id="duplicate-message" class="text-slate-300 mb-6">A file with this name already exists. What would you like to do?</p>
+             <div class="flex justify-end gap-4">
+                <button id="duplicate-cancel-btn" class="bg-slate-600 hover:bg-slate-700 text-white font-bold py-2 px-4 rounded-lg transition">Cancel</button>
+                <button id="duplicate-new-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">Add as New Copy</button>
+                
+             </div>
+        </div>
+    </div>
+
+
+    <script>
+
+        const imageInput = document.getElementById('image-input');
+        const statusText = document.getElementById('status-text');
+        const progressBarContainer = document.getElementById('progress-bar-container');
+        const progressBar = document.getElementById('progress-bar');
+        const searchBar = document.getElementById('search-bar');
+        const resultsGrid = document.getElementById('results-grid');
+        
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalImage = document.getElementById('modal-image');
+        const highlightContainer = document.getElementById('highlight-container');
+        const modalClose = document.getElementById('modal-close');
+        const modalDeleteBtn = document.getElementById('modal-delete-btn');
+        const modalErrorMessage = document.getElementById('modal-error-message');
+
+        const duplicateModal = document.getElementById('duplicate-modal');
+        const duplicateTitle = document.getElementById('duplicate-title');
+        const duplicateMessage = document.getElementById('duplicate-message');
+        const duplicateCancelBtn = document.getElementById('duplicate-cancel-btn');
+        const duplicateNewBtn = document.getElementById('duplicate-new-btn');
+
+        const API_BASE_URL = 'http://127.0.0.1:5000';
+
+        let currentSearchHighlights = {};
+        let currentModalImageId = null;
+
+        async function loadAndDisplayImages() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/images`);
+                if (!response.ok) throw new Error('Failed to fetch images from server.');
+                
+                const images = await response.json();
+                resultsGrid.innerHTML = ''; 
+                
+                if (images.length === 0) {
+                    statusText.textContent = 'Your gallery is empty. Add some images to get started!';
+                } else {
+                     statusText.textContent = `Showing ${images.length} images.`;
+                }
+                images.forEach(image => createImageThumbnail(image));
+
+            } catch (error) {
+                console.error("Error loading images:", error);
+                statusText.textContent = `Error: Could not connect to backend at ${API_BASE_URL}. Is it running?`;
+            }
+        }
+
+        function createImageThumbnail(imageData) {
+            const imgContainer = document.createElement('div');
+            imgContainer.className = 'aspect-square bg-slate-800 rounded-lg overflow-hidden cursor-pointer transform hover:scale-105 transition-transform duration-300 shadow-md';
+            imgContainer.dataset.id = imageData.id;
+            imgContainer.dataset.filename = imageData.display_name; 
+            imgContainer.dataset.url = `${API_BASE_URL}/uploads/${imageData.internal_filename}`;
+            const img = document.createElement('img');
+            img.src = `${API_BASE_URL}/uploads/${imageData.internal_filename}`; 
+            img.className = 'w-full h-full object-cover';
+            img.alt = imageData.display_name;
+            
+
+            img.onerror = () => {
+                imgContainer.innerHTML = `
+                    <div class="thumbnail-error">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span class="thumbnail-error-text" title="${imageData.display_name}">File Missing</span>
+                    </div>
+                `;
+            };
+            
+            imgContainer.appendChild(img);
+            
+            resultsGrid.appendChild(imgContainer);
+        }
+
+
+        async function handleImageUpload(event) {
+            const files = event.target.files;
+            if (files.length === 0) return;
+            
+            console.log(`File selection change detected. Found ${files.length} files.`); 
+            
+            progressBarContainer.classList.remove('hidden');
+            let filesProcessed = 0;
+            let filesSkipped = 0;
+
+            let i = 0;
+            for (const file of files) {
+                i++;
+                console.log(`Loop iteration ${i}. Processing file: ${file.name}`); // DEBUG
+                
+                statusText.textContent = `(${i}/${files.length}) Processing ${file.name}... (this may take a while)`;
+                progressBar.style.width = `${(i / files.length) * 100}%`;
+                
+                try {
+                    await uploadSingleFile(file);
+                    filesProcessed++;
+                } catch (error) {
+                    if (error.status === 409) {
+                        console.warn(`Duplicate file detected: ${file.name}`);
+                        
+                        const userAction = await showDuplicateModal(file, error.message);
+                        
+                        if (userAction === 'new_copy') {
+                            try {
+                                statusText.textContent = `(${i}/${files.length}) Adding ${file.name} as new copy...`;
+                                await uploadSingleFile(file, 'new_copy');
+                                filesProcessed++;
+                            } catch (e) {
+                                console.error(`Failed to add new copy of ${file.name}:`, e);
+                                filesSkipped++;
+                            }
+                        } else {
+                            filesSkipped++;
+                        }
+                        
+                    } else {
+                        console.error(`Failed to process ${file.name}:`, error);
+                        filesSkipped++;
+                    }
+                }
+            }
+
+            console.log("Loop finished.");
+            console.log(`processed file = ${filesProcessed}. skipped files = ${filesSkipped}`);
+            progressBarContainer.classList.add('hidden');
+            progressBar.style.width = '0%';
+            statusText.textContent = `Finished processing. ${filesProcessed} added, ${filesSkipped} skipped.`;
+    
+            event.target.value = null; 
+
+            await loadAndDisplayImages(); 
+        }
+        
+        async function uploadSingleFile(file, action = null) {
+            const cleanName = file.name.replace(/[",“”]/g, ''); 
+            
+            const formData = new FormData();
+            formData.append('file', file, cleanName);
+
+            let uploadUrl = `${API_BASE_URL}/upload`;
+            if (action === 'new_copy') {
+                uploadUrl += `?action=new_copy`;
+            }
+
+            const response = await fetch(uploadUrl, {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                const error = new Error(result.message || 'Upload failed');
+                error.status = response.status;
+                throw error;
+            }
+            
+            console.log(`Successfully processed ${file.name}.`); 
+        }
+        
+        function showDuplicateModal(file, message) {
+            return new Promise((resolve) => {
+                duplicateTitle.textContent = `Duplicate File: ${file.name}`;
+                duplicateMessage.textContent = message;
+                
+                duplicateModal.classList.remove('hidden');
+                duplicateModal.classList.add('flex');
+
+                const onCancel = () => {
+                    duplicateModal.classList.add('hidden');
+                    duplicateModal.classList.remove('flex');
+                    duplicateCancelBtn.removeEventListener('click', onCancel);
+                    duplicateNewBtn.removeEventListener('click', onNew);
+                    resolve('cancel');
+                };
+                
+                const onNew = () => {
+                    duplicateModal.classList.add('hidden');
+                    duplicateModal.classList.remove('flex');
+                    duplicateCancelBtn.removeEventListener('click', onCancel);
+                    duplicateNewBtn.removeEventListener('click', onNew);
+                    resolve('new_copy');
+                };
+
+                duplicateCancelBtn.addEventListener('click', onCancel, { once: true });
+                duplicateNewBtn.addEventListener('click', onNew, { once: true });
+            });
+        }
+        
+
+        async function performSearch() {
+            const query = searchBar.value.trim();
+            if (query.length === 0) {
+                currentSearchHighlights = {};
+                await loadAndDisplayImages();
+                return;
+            }
+
+            statusText.textContent = 'Searching...';
+            try {
+                const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`);
+                if (!response.ok) throw new Error('Search request failed.');
+
+                const matches = await response.json();
+                resultsGrid.innerHTML = ''; 
+
+                if (matches.length === 0) {
+                    statusText.textContent = `No matches found for "${query}".`;
+                } else {
+                    statusText.textContent = `Found ${matches.length} matching images.`;
+                }
+
+                currentSearchHighlights = {};
+                
+                matches.forEach(match => {
+                    createImageThumbnail(match);
+                    currentSearchHighlights[match.id] = match.matched_words;
+                });
+
+            } catch (error) {
+                console.error("Search error:", error);
+                statusText.textContent = "Error during search. Please try again.";
+            }
+        }
+
+        let onImageLoadSuccess = null;
+        let onImageLoadError = null;
+        
+        function openModal(imageElement) {
+            const imageId = imageElement.dataset.id;
+            const imageUrl = imageElement.dataset.url;
+            const filename = imageElement.dataset.filename;
+
+            currentModalImageId = imageId; 
+            modalTitle.textContent = filename;
+
+            modalImage.style.display = 'none'; 
+            modalErrorMessage.classList.add('hidden');
+            highlightContainer.innerHTML = ''; 
+
+            if (onImageLoadSuccess) {
+                modalImage.removeEventListener('load', onImageLoadSuccess);
+            }
+            if (onImageLoadError) {
+                modalImage.removeEventListener('error', onImageLoadError);
+            }
+            
+            onImageLoadSuccess = () => {
+                console.log("Image loaded successfully.");
+                modalImage.style.display = 'block'; 
+                modalErrorMessage.classList.add('hidden'); 
+
+                showModal(); 
+                
+                const highlights = currentSearchHighlights[imageId];
+                drawHighlights(highlights);
+            };
+
+            onImageLoadError = () => {
+                console.log("Image failed to load (file missing).");
+                modalImage.style.display = 'none'; 
+                modalErrorMessage.classList.remove('hidden');
+                
+                showModal();
+            };
+
+            modalImage.addEventListener('load', onImageLoadSuccess);
+            modalImage.addEventListener('error', onImageLoadError);
+            modalImage.src = imageUrl;
+        }
+
+        function showModal() {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function drawHighlights(highlights) {
+            highlightContainer.innerHTML = ''; 
+            if (!highlights || highlights.length === 0) return; 
+
+
+            const imgRect = modalImage.getBoundingClientRect();
+            const containerRect = highlightContainer.getBoundingClientRect();
+
+            const offsetX = imgRect.left - containerRect.left;
+            const offsetY = imgRect.top - containerRect.top;
+            
+            const displayWidth = imgRect.width;
+            const displayHeight = imgRect.height;
+            const naturalWidth = modalImage.naturalWidth;
+            const naturalHeight = modalImage.naturalHeight;
+
+            if (naturalWidth === 0 || naturalHeight === 0) return;
+
+            const scaleX = displayWidth / naturalWidth;
+            const scaleY = displayHeight / naturalHeight;
+
+            highlights.forEach(word => {
+                const [x, y, w, h] = word.bbox; 
+                
+                const highlight = document.createElement('div');
+                highlight.className = 'highlight-box';
+
+                let scaledW = w * scaleX;
+                let scaledH = h * scaleY;
+
+                if (scaledW < 2) scaledW = 2;
+                if (scaledH < 2) scaledH = 2;
+
+                highlight.style.left = `${(x * scaleX) + offsetX}px`;
+                highlight.style.top = `${(y * scaleY) + offsetY}px`;
+                highlight.style.width = `${scaledW}px`;
+                highlight.style.height = `${scaledH}px`;
+
+                highlightContainer.appendChild(highlight);
+            });
+        }
+        
+        function closeModal() {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modalImage.src = ''; 
+            highlightContainer.innerHTML = '';
+            currentModalImageId = null; 
+            
+            if (onImageLoadSuccess) {
+                modalImage.removeEventListener('load', onImageLoadSuccess);
+            }
+            if (onImageLoadError) {
+                modalImage.removeEventListener('error', onImageLoadError);
+            }
+            onImageLoadSuccess = null;
+            onImageLoadError = null;
+        }
+
+        async function handleDeleteImage() {
+            if (currentModalImageId === null) return;
+            
+            if (confirm("Are you sure you want to permanently delete this image? This cannot be undone.")) {
+                try {
+                    statusText.textContent = 'Deleting image...';
+                    
+                    const response = await fetch(`${API_BASE_URL}/image/${currentModalImageId}`, {
+                        method: 'DELETE',
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(result.error || 'Failed to delete');
+                    }
+                    
+                    statusText.textContent = `Successfully deleted image.`;
+                    
+                } catch (error) {
+                    console.error("Delete error:", error);
+                    statusText.textContent = `Error: ${error.message}`;
+                } finally {
+                    closeModal();
+                    await loadAndDisplayImages(); 
+                }
+            }
+        }
+
+        imageInput.addEventListener('change', handleImageUpload);
+        
+        searchBar.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter' || searchBar.value.trim() === '') {
+                performSearch();
+            }
+        });
+        
+        resultsGrid.addEventListener('click', (event) => {
+            const target = event.target.closest('[data-id]');
+            if (target) {
+                openModal(target);
+            }
+        });
+        
+        modalClose.addEventListener('click', closeModal);
+        modalDeleteBtn.addEventListener('click', handleDeleteImage); 
+        
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+        
+        window.addEventListener('resize', () => {
+            if (!modal.classList.contains('hidden')) {
+                const highlights = currentSearchHighlights[currentModalImageId];
+                drawHighlights(highlights);
+            }
+        });
+
+        async function main() {
+            await loadAndDisplayImages();
+        }
+
+        main();
+
+    </script>
+</body>
+</html>
+
