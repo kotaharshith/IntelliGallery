@@ -2,9 +2,13 @@
 
 A White-Box, Error-Tolerant Search Framework for Private Image Repositories.
 
+
+
 **Overview**
 
 IntelliGallery is a local-first client–server system that transforms a private image collection into a searchable text index. The backend uses EasyOCR to extract text from images, stores structured OCR data in SQLite, and exposes a transparent, controllable search engine that supports Boolean (AND/OR) operations, substring detection, and fuzzy (Levenshtein) matching. All processing occurs locally, preserving privacy and ensuring predictable behavior.
+
+
 
 **Key Features**
 
@@ -21,6 +25,7 @@ Substring detection (e.g., “time” in “timetable”).
 Highlight overlays showing exactly where matched text appears.
 
 Controlled duplicate handling workflow using HTTP 409 responses.
+
 
 
 **Installation**
@@ -61,6 +66,8 @@ Open index.html in a browser (or use VS Code Live Server).
 
 7.Frontend displays highlight overlays using the saved bounding boxes.
 
+
+
 **Example Queries:**
 
 invoice → returns images containing the word.
@@ -70,6 +77,7 @@ budget AND 2025 → both terms must appear.
 meeting OR task → either term is valid.
 
 invo1ce → matched through fuzzy (Levenshtein) logic.
+
 
 
 **Technologies Used:**
@@ -85,6 +93,7 @@ Database: SQLite
 Matching Logic: Boolean filtering + Levenshtein distance
 
 
+
 **Future Enhancements:**
 
 Multimodal search combining OCR text with object detection.
@@ -92,6 +101,7 @@ Multimodal search combining OCR text with object detection.
 Semantic vector search using Sentence-BERT embeddings.
 
 Knowledge graph creation using entity extraction for richer queries.
+
 
 
 **License**
